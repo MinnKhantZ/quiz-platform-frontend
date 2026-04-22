@@ -10,6 +10,7 @@ interface LiveAnswer {
 
 interface SocketState {
   connected: boolean;
+  reconnecting: boolean;
   session: LiveSession | null;
   currentQuestion: Question | null;
   questionIndex: number;
@@ -33,6 +34,7 @@ interface SocketState {
 
 export const useSocketStore = create<SocketState>((set) => ({
   connected: false,
+  reconnecting: false,
   session: null,
   currentQuestion: null,
   questionIndex: 0,
@@ -43,8 +45,17 @@ export const useSocketStore = create<SocketState>((set) => ({
   connect: () => {
     const socket = connectSocket();
 
-    socket.on("connect", () => set({ connected: true }));
-    socket.on("disconnect", () => set({ connected: false }));
+    socket.off("connect");
+    socket.off("disconnect");
+    socket.off("connect_error");
+    socket.off("student-joined");
+    socket.off("question");
+    socket.off("answer-received");
+    socket.off("session-ended");
+
+    socket.on("connect", () => set({ connected: true, reconnecting: false }));
+    socket.on("disconnect", () => set({ connected: false, reconnecting: true }));
+    socket.on("connect_error", () => set({ connected: false, reconnecting: true }));
 
     socket.on("student-joined", ({ student }: { student: User }) => {
       set((state) => ({ students: [...state.students, student] }));
@@ -113,7 +124,7 @@ export const useSocketStore = create<SocketState>((set) => ({
 
   disconnect: () => {
     disconnectSocket();
-    set({ connected: false, session: null, currentQuestion: null, students: [], answers: [] });
+    set({ connected: false, reconnecting: false, session: null, currentQuestion: null, students: [], answers: [] });
   },
 
   reset: () =>

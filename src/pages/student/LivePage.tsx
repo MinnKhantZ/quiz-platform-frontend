@@ -20,7 +20,17 @@ export default function StudentLivePage() {
   const [answered, setAnswered] = useState(false);
   const [lastCorrect, setLastCorrect] = useState<boolean | null>(null);
 
-  const { connect, joinSession, submitLiveAnswer, session, currentQuestion, questionIndex, totalQuestions, disconnect } =
+  const {
+    connect,
+    joinSession,
+    submitLiveAnswer,
+    session,
+    currentQuestion,
+    questionIndex,
+    totalQuestions,
+    disconnect,
+    reconnecting,
+  } =
     useSocketStore();
 
   useEffect(() => {
@@ -70,9 +80,10 @@ export default function StudentLivePage() {
               maxLength={6}
               className="text-center text-2xl tracking-widest"
             />
-            <Button className="w-full" onClick={handleJoin} disabled={joinCode.length !== 6}>
+            <Button className="w-full" onClick={handleJoin} disabled={joinCode.length !== 6 || reconnecting}>
               Join Session
             </Button>
+            {reconnecting && <p className="text-center text-sm text-muted-foreground">Reconnecting to live server...</p>}
           </CardContent>
         </Card>
       </div>

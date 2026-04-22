@@ -11,7 +11,7 @@ export default function TeacherLivePage() {
   const { quizzes, fetchQuizzes } = useQuizStore();
   const {
     connect, createSession, startSession, nextQuestion, endSession, disconnect,
-    session, currentQuestion, questionIndex, totalQuestions, students, answers,
+    session, currentQuestion, questionIndex, totalQuestions, students, answers, reconnecting,
   } = useSocketStore();
   const [copied, setCopied] = useState(false);
 
@@ -66,9 +66,12 @@ export default function TeacherLivePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Live Session</h1>
-        <Button variant="destructive" onClick={() => endSession()}>
-          <StopCircle className="mr-2 h-4 w-4" /> End Session
-        </Button>
+        <div className="flex items-center gap-3">
+          {reconnecting && <Badge variant="outline">Reconnecting...</Badge>}
+          <Button variant="destructive" onClick={() => endSession()}>
+            <StopCircle className="mr-2 h-4 w-4" /> End Session
+          </Button>
+        </div>
       </div>
 
       <Card>

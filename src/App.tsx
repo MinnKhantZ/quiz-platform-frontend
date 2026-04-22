@@ -1,10 +1,12 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useAuthStore } from "./stores/authStore";
+import { setUnauthorizedHandler } from "./lib/api";
 
 import Layout from "./components/layout/Layout";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import LoadingSpinner from "./components/common/LoadingSpinner";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
@@ -33,12 +35,23 @@ function App() {
     initialize();
   }, [initialize]);
 
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      useAuthStore.getState().logout();
+    });
+
+    return () => {
+      setUnauthorizedHandler(null);
+    };
+  }, []);
+
   if (loading) {
     return <LoadingSpinner className="min-h-screen" />;
   }
 
   return (
-    <Routes>
+    <ErrorBoundary>
+      <Routes>
       {/* Public routes */}
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route path="/register" element={user ? <Navigate to="/" replace /> : <RegisterPage />} />
@@ -175,7 +188,8 @@ function App() {
 
       {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+      </Routes>
+    </ErrorBoundary>
   );
 }
 
