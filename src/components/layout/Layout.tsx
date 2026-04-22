@@ -1,3 +1,4 @@
+import ThemeToggle from "../common/ThemeToggle";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
 import { Button } from "../ui/button";
@@ -11,8 +12,10 @@ import {
   LogOut,
   Menu,
   X,
+  Zap,
 } from "lucide-react";
 import { useState, type ReactNode, type ComponentType } from "react";
+import { cn } from "../../lib/utils";
 
 interface NavLink {
   to: string;
@@ -46,79 +49,131 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const links = user?.role === "TEACHER" ? teacherLinks : studentLinks;
+  const roleColor = user?.role === "TEACHER" ? "text-primary" : "text-sky-400";
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
+  const initials = user?.name
+    ?.split(" ")
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase() ?? "?";
+
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-card border-r transition-transform duration-200 lg:relative lg:translate-x-0 ${
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-64 flex-col bg-card border-r border-border flex",
+          "transition-transform duration-300 ease-out",
+          "lg:relative lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        )}
       >
-        <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between border-b px-6 py-4">
-            <h1 className="text-xl font-bold text-primary">QuizPlatform</h1>
-            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(false)}>
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-
-          <nav className="flex-1 space-y-1 px-3 py-4">
-            {links.map((link) => {
-              const Icon = link.icon;
-              const isActive = location.pathname === link.to;
-              return (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="border-t p-4">
-            <div className="mb-3 px-3">
-              <p className="text-sm font-medium">{user?.name}</p>
-              <p className="text-xs text-muted-foreground">{user?.role}</p>
+        {/* Logo */}
+        <div className="flex items-center justify-between px-5 py-5 border-b border-border">
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+              <Zap className="h-4 w-4" />
             </div>
-            <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
+            <span className="font-display font-bold text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">
+              Quiz<span className="text-primary">Platform</span>
+            </span>
+          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden h-7 w-7"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+          {links.map((link) => {
+            const Icon = link.icon;
+            const isActive = location.pathname === link.to;
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                onClick={() => setSidebarOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                  isActive
+                    ? "bg-primary/15 text-primary border border-primary/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                )}
+              >
+                <Icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} />
+                {link.label}
+                {isActive && (
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* User */}
+        <div className="border-t border-border p-3">
+          <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 mb-1">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary font-display font-bold text-xs">
+              {initials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">{user?.name}</p>
+              <p className={cn("text-xs font-display font-semibold uppercase tracking-wider", roleColor)}>
+                {user?.role}
+              </p>
+            </div>
           </div>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
         </div>
       </aside>
 
-      {/* Overlay for mobile */}
+      {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex items-center border-b px-4 py-3 lg:px-6">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
+      {/* Main */}
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+        {/* Topbar */}
+        <header className="flex items-center gap-3 border-b border-border bg-card/50 backdrop-blur px-4 py-3 lg:px-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={() => setSidebarOpen(true)}
+          >
             <Menu className="h-5 w-5" />
           </Button>
           <div className="flex-1" />
+          <ThemeToggle />
         </header>
 
-        <main className="flex-1 overflow-auto p-4 lg:p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-4 lg:p-6 animate-fade-in">
+          {children}
+        </main>
       </div>
     </div>
   );
 }
+

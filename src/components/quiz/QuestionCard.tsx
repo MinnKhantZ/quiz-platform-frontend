@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardHeader } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import OptionButton from "./OptionButton";
+import { CheckCircle2, XCircle } from "lucide-react";
 import type { Question } from "../../types";
+import { cn } from "../../lib/utils";
 
 interface AnswerPayload {
   questionId: string;
@@ -49,20 +51,26 @@ export default function QuestionCard({
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <Badge variant="outline">{typeLabel[question.type]}</Badge>
-          <span className="text-sm text-muted-foreground">
-            {index + 1} / {total}
+    <Card className="w-full max-w-2xl mx-auto border-border">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between mb-3">
+          <Badge variant="secondary">{typeLabel[question.type]}</Badge>
+          <span className="font-display text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            {index + 1} <span className="text-border">/ {total}</span>
           </span>
         </div>
-        <CardTitle className="text-lg mt-2">{question.text}</CardTitle>
+        <p className="text-lg font-display font-semibold text-foreground leading-snug">
+          {question.text}
+        </p>
         {question.imageUrl && (
-          <img src={question.imageUrl} alt="Question" className="mt-3 rounded-lg max-h-64 object-contain" />
+          <img
+            src={question.imageUrl}
+            alt="Question illustration"
+            className="mt-3 rounded-xl max-h-56 object-contain border border-border"
+          />
         )}
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 pt-0">
         {(question.type === "MCQ" || question.type === "TRUE_FALSE") && (
           <div className="space-y-2">
             {question.options?.map((opt, i) => (
@@ -82,7 +90,7 @@ export default function QuestionCard({
 
         {question.type === "FILL_BLANK" && (
           <Input
-            placeholder="Type your answer..."
+            placeholder="Type your answer…"
             value={textAnswer}
             onChange={(e) => setTextAnswer(e.target.value)}
             disabled={disabled || showResult}
@@ -97,7 +105,8 @@ export default function QuestionCard({
               disabled ||
               (question.type === "FILL_BLANK" ? !textAnswer.trim() : selectedOption === null)
             }
-            className="w-full mt-4"
+            className="w-full mt-2"
+            size="lg"
           >
             Submit Answer
           </Button>
@@ -105,16 +114,25 @@ export default function QuestionCard({
 
         {showResult && (
           <div
-            className={`mt-4 rounded-lg p-3 text-center font-medium ${
+            className={cn(
+              "flex items-center gap-2.5 rounded-xl border p-3.5",
               isCorrect
-                ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
-                : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
-            }`}
+                ? "border-success/30 bg-success/10 text-success"
+                : "border-destructive/30 bg-destructive/10 text-destructive"
+            )}
           >
-            {isCorrect ? "Correct!" : "Incorrect"}
+            {isCorrect ? (
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
+            ) : (
+              <XCircle className="h-5 w-5 shrink-0" />
+            )}
+            <span className="font-display font-semibold">
+              {isCorrect ? "Correct!" : "Incorrect"}
+            </span>
           </div>
         )}
       </CardContent>
     </Card>
   );
 }
+

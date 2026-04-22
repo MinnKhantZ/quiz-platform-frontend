@@ -161,10 +161,17 @@ export default function QuizCreatePage() {
 
   if (step === 1) {
     return (
-      <div className="mx-auto max-w-2xl space-y-6">
-        <h1 className="text-2xl font-bold">Create New Quiz</h1>
+      <div className="mx-auto max-w-xl space-y-6 animate-slide-up">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">1</span>
+            <span className="text-xs font-display font-semibold uppercase tracking-wider text-primary">Step 1 of 2</span>
+          </div>
+          <h1 className="font-display text-2xl font-bold">Create New Quiz</h1>
+          <p className="text-muted-foreground mt-1">Set up the basic details for your quiz</p>
+        </div>
         <Card>
-          <CardContent className="space-y-4 pt-6">
+          <CardContent className="space-y-5 pt-6">
             <div className="space-y-2">
               <Label htmlFor="title">Quiz Title *</Label>
               <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Math Chapter 1" required />
@@ -178,15 +185,15 @@ export default function QuizCreatePage() {
               <Input id="cat" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Mathematics" />
             </div>
             <div className="space-y-2">
-              <Label>Timer</Label>
+              <Label>Timer Type</Label>
               <div className="grid grid-cols-3 gap-2">
                 {(["NONE", "PER_QUIZ", "PER_QUESTION"] as TimerType[]).map((t) => (
                   <button
                     key={t}
                     type="button"
                     onClick={() => setTimerType(t)}
-                    className={`rounded-lg border-2 p-3 text-center text-sm transition-colors ${
-                      timerType === t ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                    className={`rounded-lg border-2 p-3 text-center text-sm font-display font-medium transition-colors ${
+                      timerType === t ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"
                     }`}
                   >
                     {t === "NONE" ? "No Timer" : t === "PER_QUIZ" ? "Per Quiz" : "Per Question"}
@@ -194,7 +201,7 @@ export default function QuizCreatePage() {
                 ))}
               </div>
               {timerType !== "NONE" && (
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-3 mt-2">
                   <Input
                     type="number"
                     value={timerSeconds}
@@ -206,8 +213,8 @@ export default function QuizCreatePage() {
                 </div>
               )}
             </div>
-            <Button onClick={handleCreateQuiz} disabled={!title || saving} className="w-full">
-              {saving ? "Creating..." : "Next: Add Questions"}
+            <Button onClick={handleCreateQuiz} disabled={!title || saving} className="w-full" size="lg">
+              {saving ? "Creating…" : "Next: Add Questions →"}
             </Button>
           </CardContent>
         </Card>
@@ -216,32 +223,41 @@ export default function QuizCreatePage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Add Questions</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/teacher/quizzes")}>
+    <div className="mx-auto max-w-xl space-y-5 animate-slide-up">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">2</span>
+            <span className="text-xs font-display font-semibold uppercase tracking-wider text-primary">Step 2 of 2</span>
+          </div>
+          <h1 className="font-display text-2xl font-bold">Add Questions</h1>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => navigate("/teacher/quizzes")}>
             Save as Draft
           </Button>
-          <Button onClick={publishQuiz} disabled={questions.length === 0 || saving}>
+          <Button size="sm" onClick={publishQuiz} disabled={questions.length === 0 || saving}>
             Publish Quiz
           </Button>
         </div>
       </div>
 
       {questions.map((q, qIndex) => (
-        <Card key={qIndex}>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Question {qIndex + 1}</CardTitle>
+        <Card key={qIndex} className="relative overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardTitle className="text-sm font-display font-semibold uppercase tracking-wider text-muted-foreground">
+              Question {qIndex + 1}
+            </CardTitle>
             <div className="flex items-center gap-2">
               <Badge variant={q.saved ? "success" : "secondary"}>{q.saved ? "Saved" : "Unsaved"}</Badge>
-              <Button variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)}>
-                <Trash2 className="h-4 w-4 text-red-500" />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeQuestion(qIndex)}>
+                <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="flex gap-2">
               {(["MCQ", "TRUE_FALSE", "FILL_BLANK"] as QuestionType[]).map((t) => (
                 <button
                   key={t}
@@ -262,8 +278,8 @@ export default function QuizCreatePage() {
                       ]);
                     }
                   }}
-                  className={`rounded border px-3 py-1.5 text-xs font-medium transition-colors ${
-                    q.type === t ? "border-primary bg-primary/10 text-primary" : "border-border"
+                  className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-display font-medium transition-colors ${
+                    q.type === t ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
                   }`}
                 >
                   {t === "MCQ" ? "MCQ" : t === "TRUE_FALSE" ? "True/False" : "Fill Blank"}
@@ -273,7 +289,7 @@ export default function QuizCreatePage() {
 
             <div className="space-y-2">
               <Label>Question Text</Label>
-              <Input value={q.text} onChange={(e) => updateQuestion(qIndex, "text", e.target.value)} placeholder="Enter question..." />
+              <Input value={q.text} onChange={(e) => updateQuestion(qIndex, "text", e.target.value)} placeholder="Enter question…" />
             </div>
 
             <div>
@@ -290,9 +306,9 @@ export default function QuizCreatePage() {
                   </Button>
                 </div>
               ) : (
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed p-3 text-sm text-muted-foreground hover:bg-accent">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground hover:bg-accent/60 transition-colors">
                   <ImagePlus className="h-4 w-4" />
-                  Add Image (optional)
+                  Add image (optional)
                   <input
                     type="file"
                     accept="image/*"
@@ -305,7 +321,7 @@ export default function QuizCreatePage() {
 
             {(q.type === "MCQ" || q.type === "TRUE_FALSE") && (
               <div className="space-y-2">
-                <Label>Options (click radio to mark correct)</Label>
+                <Label>Options — click radio to mark correct</Label>
                 {q.options.map((opt, oIndex) => (
                   <div key={oIndex} className="flex items-center gap-2">
                     <input
@@ -313,7 +329,7 @@ export default function QuizCreatePage() {
                       name={`correct-${qIndex}`}
                       checked={opt.isCorrect}
                       onChange={() => updateOption(qIndex, oIndex, "isCorrect", true)}
-                      className="h-4 w-4"
+                      className="h-4 w-4 accent-[oklch(0.74_0.16_80)]"
                     />
                     <Input
                       value={opt.text}
@@ -337,8 +353,8 @@ export default function QuizCreatePage() {
               </div>
             )}
 
-            <div className="flex items-center gap-2">
-              <Label>Points:</Label>
+            <div className="flex items-center gap-3">
+              <Label>Points</Label>
               <Input
                 type="number"
                 value={q.points}
@@ -354,13 +370,13 @@ export default function QuizCreatePage() {
               onClick={() => saveQuestion(qIndex)}
               disabled={!q.text || saving}
             >
-              {saving ? "Saving..." : q.saved ? "Update Question" : "Save Question"}
+              {saving ? "Saving…" : q.saved ? "Update Question" : "Save Question"}
             </Button>
           </CardContent>
         </Card>
       ))}
 
-      <Button variant="outline" className="w-full" onClick={addQuestion}>
+      <Button variant="outline" className="w-full border-dashed" onClick={addQuestion}>
         <PlusCircle className="mr-2 h-4 w-4" /> Add Question
       </Button>
     </div>

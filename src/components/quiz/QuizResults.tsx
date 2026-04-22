@@ -1,11 +1,12 @@
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Progress } from "../ui/progress";
 import { formatTime, formatDate } from "../../lib/utils";
 import { useNavigate } from "react-router-dom";
-import { Trophy, CheckCircle, XCircle } from "lucide-react";
+import { Trophy, CheckCircle2, XCircle, Star } from "lucide-react";
 import type { Attempt } from "../../types";
+import { cn } from "../../lib/utils";
 
 interface QuizResultsProps {
   attempt: Attempt;
@@ -13,74 +14,105 @@ interface QuizResultsProps {
 
 export default function QuizResults({ attempt }: QuizResultsProps) {
   const navigate = useNavigate();
+  const pct = Math.round(attempt.percentage);
+  const isPassing = pct >= 70;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <Card>
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-2">
-            {attempt.percentage >= 70 ? (
-              <Trophy className="h-12 w-12 text-yellow-500" />
+    <div className="mx-auto max-w-2xl space-y-5 animate-slide-up">
+      {/* Score hero */}
+      <Card className={cn(
+        "relative overflow-hidden border",
+        isPassing ? "border-primary/30" : "border-border"
+      )}>
+        {isPassing && (
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+        )}
+        <CardContent className="pt-8 pb-6 text-center space-y-4">
+          {/* Icon */}
+          <div className={cn(
+            "mx-auto flex h-16 w-16 items-center justify-center rounded-2xl",
+            isPassing ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
+          )}>
+            {isPassing ? (
+              <Trophy className="h-8 w-8" />
             ) : (
-              <Trophy className="h-12 w-12 text-muted-foreground" />
+              <Star className="h-8 w-8" />
             )}
           </div>
-          <CardTitle className="text-2xl">Quiz Complete!</CardTitle>
-          <p className="text-muted-foreground">{attempt.quiz?.title}</p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-3 gap-4 text-center">
+
+          <div>
+            <p className="font-display text-3xl font-bold text-foreground">Quiz Complete!</p>
+            <p className="text-muted-foreground mt-1">{attempt.quiz?.title}</p>
+          </div>
+
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-4 py-4 border-y border-border">
             <div>
-              <p className="text-3xl font-bold text-primary">{Math.round(attempt.percentage)}%</p>
-              <p className="text-xs text-muted-foreground">Score</p>
+              <p className={cn(
+                "font-display text-4xl font-bold",
+                isPassing ? "text-primary" : "text-foreground"
+              )}>
+                {pct}%
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider font-display font-semibold">Score</p>
             </div>
             <div>
-              <p className="text-3xl font-bold">
+              <p className="font-display text-4xl font-bold text-foreground">
                 {attempt.score}/{attempt.totalPoints}
               </p>
-              <p className="text-xs text-muted-foreground">Points</p>
+              <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider font-display font-semibold">Points</p>
             </div>
             <div>
-              <p className="text-3xl font-bold">{formatTime(attempt.timeTaken)}</p>
-              <p className="text-xs text-muted-foreground">Time</p>
+              <p className="font-display text-4xl font-bold text-foreground">
+                {formatTime(attempt.timeTaken)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider font-display font-semibold">Time</p>
             </div>
           </div>
 
-          <Progress value={attempt.percentage} className="h-3" />
-
-          {attempt.answers && (
-            <div className="space-y-3">
-              <h3 className="font-semibold">Question Breakdown</h3>
-              {attempt.answers.map((ans) => (
-                <div key={ans.id} className="flex items-center gap-3 rounded-lg border p-3">
-                  {ans.isCorrect ? (
-                    <CheckCircle className="h-5 w-5 shrink-0 text-green-500" />
-                  ) : (
-                    <XCircle className="h-5 w-5 shrink-0 text-red-500" />
-                  )}
-                  <span className="flex-1 text-sm">{ans.question?.text}</span>
-                  <Badge variant={ans.isCorrect ? "success" : "destructive"}>
-                    {ans.points}/{ans.question?.points}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          )}
+          <Progress value={attempt.percentage} className="h-2" />
 
           {attempt.completedAt && (
-            <p className="text-center text-xs text-muted-foreground">{formatDate(attempt.completedAt)}</p>
+            <p className="text-xs text-muted-foreground">{formatDate(attempt.completedAt)}</p>
           )}
-
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => navigate(-1)}>
-              Back
-            </Button>
-            <Button className="flex-1" onClick={() => navigate("/student/quizzes")}>
-              More Quizzes
-            </Button>
-          </div>
         </CardContent>
       </Card>
+
+      {/* Question breakdown */}
+      {attempt.answers && attempt.answers.length > 0 && (
+        <div className="space-y-2">
+          <p className="font-display font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+            Question Breakdown
+          </p>
+          {attempt.answers.map((ans) => (
+            <div key={ans.id} className={cn(
+              "flex items-start gap-3 rounded-xl border p-3.5",
+              ans.isCorrect ? "border-success/20 bg-success/5" : "border-destructive/20 bg-destructive/5"
+            )}>
+              {ans.isCorrect ? (
+                <CheckCircle2 className="h-4.5 w-4.5 shrink-0 mt-0.5 text-success" />
+              ) : (
+                <XCircle className="h-4.5 w-4.5 shrink-0 mt-0.5 text-destructive" />
+              )}
+              <span className="flex-1 text-sm text-foreground">{ans.question?.text}</span>
+              <Badge variant={ans.isCorrect ? "success" : "destructive"} className="shrink-0">
+                {ans.points}/{ans.question?.points}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-3">
+        <Button variant="outline" className="flex-1" onClick={() => navigate(-1)}>
+          Back
+        </Button>
+        <Button className="flex-1" onClick={() => navigate("/student/quizzes")}>
+          More Quizzes
+        </Button>
+      </div>
     </div>
   );
 }
+

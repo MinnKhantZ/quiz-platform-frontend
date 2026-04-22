@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { formatTime } from "../../lib/utils";
+import { cn } from "../../lib/utils";
+import { Clock } from "lucide-react";
 
 interface TimerProps {
   seconds: number;
@@ -34,18 +36,33 @@ export default function Timer({ seconds, onTimeUp, running = true }: TimerProps)
 
   const percentage = (timeLeft / seconds) * 100;
   const isLow = timeLeft <= 10;
+  const isCritical = timeLeft <= 5;
 
   return (
-    <div className="flex items-center gap-3">
-      <div className={`text-lg font-mono font-bold ${isLow ? "text-red-500 animate-pulse" : "text-foreground"}`}>
+    <div className={cn(
+      "flex items-center gap-3 rounded-xl border px-4 py-2.5 transition-colors",
+      isCritical ? "border-destructive/40 bg-destructive/10" : isLow ? "border-primary/30 bg-primary/5" : "border-border bg-card"
+    )}>
+      <Clock className={cn(
+        "h-4 w-4 shrink-0",
+        isCritical ? "text-destructive animate-pulse" : isLow ? "text-primary" : "text-muted-foreground"
+      )} />
+      <span className={cn(
+        "font-mono font-bold text-lg tabular-nums",
+        isCritical ? "text-destructive" : isLow ? "text-primary" : "text-foreground"
+      )}>
         {formatTime(timeLeft)}
-      </div>
-      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+      </span>
+      <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
         <div
-          className={`h-full transition-all duration-1000 rounded-full ${isLow ? "bg-red-500" : "bg-primary"}`}
+          className={cn(
+            "h-full rounded-full transition-all duration-1000",
+            isCritical ? "bg-destructive" : isLow ? "bg-primary" : "bg-primary"
+          )}
           style={{ width: `${percentage}%` }}
         />
       </div>
     </div>
   );
 }
+

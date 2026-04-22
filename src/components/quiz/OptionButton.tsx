@@ -18,26 +18,28 @@ export default function OptionButton({ text, index, selected, correct, wrong, di
       onClick={() => !disabled && onClick(index)}
       disabled={disabled}
       className={cn(
-        "flex w-full items-center gap-3 rounded-lg border-2 p-3 text-left text-sm transition-all",
-        selected && !correct && !wrong && "border-primary bg-primary/10",
-        correct && "border-green-500 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200",
-        wrong && "border-red-500 bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200",
-        !selected && !correct && !wrong && "border-border hover:border-primary/50 hover:bg-accent",
-        disabled && !correct && !wrong && "opacity-60 cursor-not-allowed"
+        "flex w-full items-center gap-3.5 rounded-xl border-2 p-3.5 text-left text-sm transition-all duration-150",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        correct && "border-success/60 bg-success/10 text-success",
+        wrong && "border-destructive/60 bg-destructive/10 text-destructive",
+        selected && !correct && !wrong && "border-primary/60 bg-primary/10 text-primary",
+        !selected && !correct && !wrong && "border-border bg-card text-foreground hover:border-primary/40 hover:bg-accent/60",
+        disabled && !correct && !wrong && "cursor-not-allowed opacity-50"
       )}
     >
       <span
         className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-xs font-bold",
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-display font-bold",
+          correct && "bg-success text-white",
+          wrong && "bg-destructive text-white",
           selected && !correct && !wrong && "bg-primary text-primary-foreground",
-          correct && "bg-green-500 text-white",
-          wrong && "bg-red-500 text-white",
-          !selected && !correct && !wrong && "bg-muted"
+          !selected && !correct && !wrong && "bg-secondary text-muted-foreground"
         )}
       >
-        {letters[index] || index + 1}
+        {letters[index] ?? index + 1}
       </span>
-      <span className="flex-1">{text}</span>
+      <span className="flex-1 font-medium">{text}</span>
     </button>
   );
 }
+

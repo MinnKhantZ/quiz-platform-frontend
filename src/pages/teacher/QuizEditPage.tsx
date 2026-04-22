@@ -76,21 +76,27 @@ export default function QuizEditPage() {
   if (!currentQuiz) return <LoadingSpinner className="mt-20" />;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Edit Quiz</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={togglePublish} disabled={saving}>
+    <div className="mx-auto max-w-xl space-y-6 animate-slide-up">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Save className="h-4 w-4 text-primary" />
+            <span className="text-xs font-display font-semibold uppercase tracking-wider text-primary">Edit Quiz</span>
+          </div>
+          <h1 className="font-display text-2xl font-bold truncate">{currentQuiz.title}</h1>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={togglePublish} disabled={saving}>
             {currentQuiz.isPublished ? "Unpublish" : "Publish"}
           </Button>
-          <Button variant="destructive" size="icon" onClick={handleDelete}>
+          <Button variant="destructive" size="icon" className="h-9 w-9" onClick={handleDelete}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       <Card>
-        <CardContent className="space-y-4 pt-6">
+        <CardContent className="space-y-5 pt-6">
           <div className="space-y-2">
             <Label>Title</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -104,15 +110,15 @@ export default function QuizEditPage() {
             <Input value={category} onChange={(e) => setCategory(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Timer</Label>
+            <Label>Timer Type</Label>
             <div className="grid grid-cols-3 gap-2">
               {(["NONE", "PER_QUIZ", "PER_QUESTION"] as TimerType[]).map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setTimerType(t)}
-                  className={`rounded border px-3 py-1.5 text-xs font-medium transition-colors ${
-                    timerType === t ? "border-primary bg-primary/10 text-primary" : "border-border"
+                  className={`rounded-lg border-2 p-3 text-center text-sm font-display font-medium transition-colors ${
+                    timerType === t ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"
                   }`}
                 >
                   {t === "NONE" ? "No Timer" : t === "PER_QUIZ" ? "Per Quiz" : "Per Question"}
@@ -120,7 +126,7 @@ export default function QuizEditPage() {
               ))}
             </div>
             {timerType !== "NONE" && (
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-3 mt-2">
                 <Input
                   type="number"
                   value={timerSeconds}
@@ -132,25 +138,32 @@ export default function QuizEditPage() {
               </div>
             )}
           </div>
-          <Button onClick={handleSave} disabled={!title || saving} className="w-full">
-            <Save className="mr-2 h-4 w-4" /> {saving ? "Saving..." : "Save Changes"}
+          <Button onClick={handleSave} disabled={!title || saving} className="w-full" size="lg">
+            <Save className="mr-2 h-4 w-4" /> {saving ? "Saving…" : "Save Changes"}
           </Button>
         </CardContent>
       </Card>
 
       <div>
-        <h2 className="text-lg font-semibold mb-3">Questions ({currentQuiz.questions?.length || 0})</h2>
-        {currentQuiz.questions?.map((q) => (
-          <Card key={q.id} className="mb-3">
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <Badge variant="outline" className="mr-2">{q.type}</Badge>
-                <span className="text-sm">{q.text}</span>
+        <p className="text-xs font-display font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+          Questions ({currentQuiz.questions?.length || 0})
+        </p>
+        <div className="space-y-2">
+          {currentQuiz.questions?.map((q) => (
+            <div key={q.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <Badge variant="outline" className="shrink-0">{q.type}</Badge>
+                <span className="text-sm truncate">{q.text}</span>
               </div>
-              <span className="text-sm text-muted-foreground">{q.points} pts</span>
-            </CardContent>
-          </Card>
-        ))}
+              <span className="ml-3 text-xs text-muted-foreground shrink-0">{q.points} pts</span>
+            </div>
+          ))}
+          {(!currentQuiz.questions || currentQuiz.questions.length === 0) && (
+            <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+              No questions yet
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

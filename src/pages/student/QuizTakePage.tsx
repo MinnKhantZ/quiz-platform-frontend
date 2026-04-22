@@ -94,15 +94,21 @@ export default function QuizTakePage() {
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div className="space-y-2">
+    <div className="mx-auto max-w-2xl space-y-5 animate-slide-up">
+      {/* Header */}
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">{quiz.title}</h1>
-          <Button variant="ghost" size="sm" onClick={() => navigate("/student/quizzes")}>
+          <h1 className="font-display text-lg font-bold text-foreground truncate pr-4">{quiz.title}</h1>
+          <Button variant="ghost" size="sm" className="shrink-0" onClick={() => navigate("/student/quizzes")}>
             Quit
           </Button>
         </div>
-        <Progress value={progress} />
+        <div className="space-y-1">
+          <Progress value={progress} className="h-1.5" />
+          <p className="text-xs text-muted-foreground text-right">
+            {currentIndex + 1} of {questions.length}
+          </p>
+        </div>
       </div>
 
       {quiz.timerType !== "NONE" && quiz.timerSeconds && (
@@ -125,3 +131,4 @@ export default function QuizTakePage() {
     </div>
   );
 }
+

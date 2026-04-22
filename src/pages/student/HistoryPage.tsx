@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
-import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { formatDate, formatTime } from "../../lib/utils";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
+import { History, ChevronLeft, ChevronRight, ChevronRight as ArrowIcon } from "lucide-react";
 import type { Attempt } from "../../types";
+import { cn } from "../../lib/utils";
 
 const PAGE_SIZE = 10;
 
@@ -39,65 +40,90 @@ export default function HistoryPage() {
   if (loading) return <LoadingSpinner className="mt-20" />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-slide-up">
       <div>
-        <h1 className="text-2xl font-bold">Quiz History</h1>
-        <p className="text-muted-foreground">View your past quiz attempts</p>
+        <div className="flex items-center gap-2 mb-1">
+          <History className="h-4 w-4 text-primary" />
+          <span className="text-xs font-display font-semibold uppercase tracking-wider text-primary">
+            History
+          </span>
+        </div>
+        <h1 className="font-display text-2xl font-bold">Quiz History</h1>
+        <p className="text-muted-foreground mt-1">Your past quiz attempts</p>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       {attempts.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-muted-foreground">No quiz attempts yet. Take a quiz to get started!</p>
-          <Button className="mt-4" onClick={() => navigate("/student/quizzes")}>
-            Browse Quizzes
-          </Button>
+        <div className="rounded-xl border border-dashed border-border p-16 text-center">
+          <History className="mx-auto h-10 w-10 text-muted-foreground/40 mb-3" />
+          <p className="text-muted-foreground mb-4">No quiz attempts yet.</p>
+          <Button onClick={() => navigate("/student/quizzes")}>Browse Quizzes</Button>
         </div>
       ) : (
-        <div className="space-y-4">
-          <div className="space-y-3">
-            {attempts.map((attempt) => (
-              <Card
-                key={attempt.id}
-                className="cursor-pointer transition-colors hover:bg-accent/50"
-                onClick={() => navigate(`/student/results/${attempt.id}`)}
-              >
-                <CardContent className="flex items-center justify-between p-4">
-                  <div>
-                    <p className="font-medium">{attempt.quiz?.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {attempt.completedAt && formatDate(attempt.completedAt)} &middot; {formatTime(attempt.timeTaken)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant={
-                        attempt.percentage >= 70 ? "success" : attempt.percentage >= 40 ? "secondary" : "destructive"
-                      }
-                    >
-                      {Math.round(attempt.percentage)}%
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {attempt.score}/{attempt.totalPoints}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        <div className="space-y-2">
+          {attempts.map((attempt) => (
+            <button
+              key={attempt.id}
+              className="group w-full flex items-center justify-between rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/30 hover:bg-accent/40"
+              onClick={() => navigate(`/student/results/${attempt.id}`)}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-foreground truncate">{attempt.quiz?.title}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {attempt.completedAt && formatDate(attempt.completedAt)}
+                  <span className="mx-1.5">·</span>
+                  {formatTime(attempt.timeTaken)}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 ml-4 shrink-0">
+                <Badge
+                  variant={
+                    attempt.percentage >= 70
+                      ? "success"
+                      : attempt.percentage >= 40
+                      ? "secondary"
+                      : "destructive"
+                  }
+                >
+                  {Math.round(attempt.percentage)}%
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  {attempt.score}/{attempt.totalPoints} pts
+                </span>
+                <ArrowIcon className={cn("h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5")} />
+              </div>
+            </button>
+          ))}
 
-          <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={() => setPage((prev) => Math.max(prev - 1, 1))} disabled={page === 1}>
-              Previous
-            </Button>
-            <span className="text-sm text-muted-foreground">Page {page}</span>
-            <Button variant="outline" onClick={() => setPage((prev) => prev + 1)} disabled={!hasMore}>
-              Next
-            </Button>
-          </div>
+          {(page > 1 || hasMore) && (
+            <div className="flex items-center justify-between pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">Page {page}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((prev) => prev + 1)}
+                disabled={!hasMore}
+              >
+                Next <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
