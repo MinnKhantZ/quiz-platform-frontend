@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
+import { useThemeStore } from "../../stores/themeStore";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { Zap, AlertCircle, GraduationCap, BookOpen } from "lucide-react";
+import { AlertCircle, GraduationCap, BookOpen } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 export default function RegisterPage() {
@@ -15,7 +16,10 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const register = useAuthStore((s) => s.register);
+  const theme = useThemeStore((s) => s.theme);
   const navigate = useNavigate();
+
+  const logoSrc = theme === "light" ? "/icon-light.png" : "/icon.svg";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,14 +46,14 @@ export default function RegisterPage() {
       <div className="relative w-full max-w-sm animate-slide-up">
         {/* Logo */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg glow-primary">
-            <Zap className="h-6 w-6" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center">
+            <img src={logoSrc} alt="AmberQuiz" className="h-full w-full object-contain filter drop-shadow-[0_0_8px_rgba(255,191,0,0.3)]" />
           </div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
             Create your account
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Join QuizPlatform as a student or teacher
+            Join AmberQuiz as a student or teacher
           </p>
         </div>
 

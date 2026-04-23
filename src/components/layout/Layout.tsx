@@ -1,6 +1,7 @@
 import ThemeToggle from "../common/ThemeToggle";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
+import { useThemeStore } from "../../stores/themeStore";
 import { Button } from "../ui/button";
 import {
   LayoutDashboard,
@@ -12,7 +13,6 @@ import {
   LogOut,
   Menu,
   X,
-  Zap,
 } from "lucide-react";
 import { useState, type ReactNode, type ComponentType } from "react";
 import { cn } from "../../lib/utils";
@@ -44,9 +44,12 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuthStore();
+  const theme = useThemeStore((s) => s.theme);
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const logoSrc = theme === "light" ? "/icon-light.png" : "/icon.svg";
 
   const links = user?.role === "TEACHER" ? teacherLinks : studentLinks;
   const roleColor = user?.role === "TEACHER" ? "text-primary" : "text-sky-400";
@@ -77,11 +80,11 @@ export default function Layout({ children }: LayoutProps) {
         {/* Logo */}
         <div className="flex items-center justify-between px-5 py-5 border-b border-border">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-              <Zap className="h-4 w-4" />
+            <div className="flex h-9 w-9 items-center justify-center">
+              <img src={logoSrc} alt="AmberQuiz" className="h-full w-full object-contain" />
             </div>
             <span className="font-display font-bold text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">
-              Quiz<span className="text-primary">Platform</span>
+              Amber<span className="text-primary">Quiz</span>
             </span>
           </Link>
           <Button
