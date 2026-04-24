@@ -1,44 +1,55 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSocketStore } from "../../stores/socketStore";
 import { useQuizStore } from "../../stores/quizStore";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { Users, Play, SkipForward, StopCircle, Copy, Check, Radio, Trophy, ClipboardList } from "lucide-react";
+import { Users, Play, SkipForward, StopCircle, Copy, Check, Radio, Trophy, ClipboardList, Wifi, WifiOff, AlertCircle } from "lucide-react";
 import type { QuizOption } from "../../types";
 import { cn } from "../../lib/utils";
 
 export default function TeacherLivePage() {
   const { quizzes, fetchQuizzes } = useQuizStore();
   const {
-    connect, createSession, startSession, nextQuestion, endSession, setSessionState, disconnect,
+    connect, createSession, startSession, nextQuestion, endSession, setSessionState,
+    leaveSession, tryResume, resuming,
     session, currentQuestion, questionIndex, totalQuestions, students, answers, reconnecting,
-    sessionResults,
+    sessionResults, sessionState,
   } = useSocketStore();
   const [copied, setCopied] = useState(false);
-  const [showResultsEnabled, setShowResultsEnabled] = useState(false);
-  const [showLeaderboardEnabled, setShowLeaderboardEnabled] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [creating, setCreating] = useState(false);
+  const resumeAttemptedRef = useRef(false);
+  const connected = useSocketStore((s) => s.connected);
 
+  // Connect on mount, leave on unmount
   useEffect(() => {
     fetchQuizzes();
     connect();
-    return () => disconnect();
-  }, [fetchQuizzes, connect, disconnect]);
+    return () => leaveSession();
+  }, [fetchQuizzes, connect, leaveSession]);
+
+  // Attempt resume once the socket is connected
+  useEffect(() => {
+    if (!connected || resumeAttemptedRef.current) return;
+    resumeAttemptedRef.current = true;
+    void tryResume();
+  }, [connected, tryResume]);
 
   const handleCreate = async (quizId: string) => {
-    setShowResultsEnabled(false);
-    setShowLeaderboardEnabled(false);
-    await createSession(quizId);
+    setCreateError("");
+    setCreating(true);
+    const res = await createSession(quizId);
+    setCreating(false);
+    if (!res.success) setCreateError(res.error ?? "Failed to start session");
   };
 
   const handleToggleResults = async (enabled: boolean) => {
-    setShowResultsEnabled(enabled);
-    await setSessionState(enabled, showLeaderboardEnabled);
+    await setSessionState(enabled, sessionState.showLeaderboard);
   };
 
   const handleToggleLeaderboard = async (enabled: boolean) => {
-    setShowLeaderboardEnabled(enabled);
-    await setSessionState(showResultsEnabled, enabled);
+    await setSessionState(sessionState.showResults, enabled);
   };
 
   const copyCode = () => {
@@ -47,6 +58,20 @@ export default function TeacherLivePage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Show a spinner while attempting resume or starting a new session
+  if (resuming || creating) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="h-8 w-8 mx-auto rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground">
+            {creating ? "Starting session…" : "Resuming session…"}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!session) {
     return (
@@ -61,6 +86,15 @@ export default function TeacherLivePage() {
           <h1 className="font-display text-2xl font-bold">Start Live Session</h1>
           <p className="text-muted-foreground mt-1">Select a published quiz to host a live session</p>
         </div>
+
+        {createError && (
+          <div className="flex items-start gap-2.5 rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            {createError === "Socket not connected"
+              ? "Not connected to server. Please wait a moment and try again."
+              : createError}
+          </div>
+        )}
 
         {quizzes.filter((q) => q.isPublished).length === 0 ? (
           <div className="rounded-xl border border-dashed border-border p-16 text-center">
@@ -131,17 +165,26 @@ export default function TeacherLivePage() {
             </Button>
             <div className="flex items-center gap-2 rounded-lg bg-card border border-border px-3 py-2">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="font-display font-bold">{students.length}</span>
+              <span className="font-display font-bold">{students.filter((s) => s.online).length}</span>
+              {students.length > students.filter((s) => s.online).length && (
+                <span className="text-xs text-muted-foreground">
+                  /{students.length}
+                </span>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
       {!currentQuestion && sessionResults.length === 0 ? (
-        <Button size="lg" className="w-full" onClick={() => startSession()} disabled={students.length === 0}>
+        <Button size="lg" className="w-full" onClick={() => startSession()} disabled={students.filter((s) => s.online).length === 0}>
           <Play className="mr-2 h-5 w-5" />
           Start Quiz
-          {students.length > 0 && <span className="ml-1 text-primary-foreground/70">({students.length} joined)</span>}
+          {students.filter((s) => s.online).length > 0 && (
+            <span className="ml-1 text-primary-foreground/70">
+              ({students.filter((s) => s.online).length} joined)
+            </span>
+          )}
         </Button>
       ) : !currentQuestion && sessionResults.length > 0 ? (
         /* Session complete — show results + actions */
@@ -196,7 +239,7 @@ export default function TeacherLivePage() {
                 </div>
                 <input
                   type="checkbox"
-                  checked={showResultsEnabled}
+                  checked={sessionState.showResults}
                   onChange={(e) => handleToggleResults(e.target.checked)}
                   className="h-4 w-4 accent-[oklch(0.74_0.16_80)]"
                 />
@@ -208,7 +251,7 @@ export default function TeacherLivePage() {
                 </div>
                 <input
                   type="checkbox"
-                  checked={showLeaderboardEnabled}
+                  checked={sessionState.showLeaderboard}
                   onChange={(e) => handleToggleLeaderboard(e.target.checked)}
                   className="h-4 w-4 accent-[oklch(0.74_0.16_80)]"
                 />
@@ -265,11 +308,15 @@ export default function TeacherLivePage() {
         </div>
       )}
 
-      {/* Student list */}
+      {/* Student roster with online/offline presence */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-display font-semibold uppercase tracking-wider text-muted-foreground">
-            Students ({students.length})
+            Students ({students.filter((s) => s.online).length} online
+            {students.length > students.filter((s) => s.online).length
+              ? `, ${students.length - students.filter((s) => s.online).length} away`
+              : ""}
+            )
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -278,7 +325,16 @@ export default function TeacherLivePage() {
           ) : (
             <div className="flex flex-wrap gap-2">
               {students.map((s) => (
-                <Badge key={s.id} variant="secondary">{s.name}</Badge>
+                <div key={s.studentId} className="flex items-center gap-1.5">
+                  {s.online ? (
+                    <Wifi className="h-3 w-3 text-success shrink-0" />
+                  ) : (
+                    <WifiOff className="h-3 w-3 text-muted-foreground shrink-0" />
+                  )}
+                  <Badge variant={s.online ? "secondary" : "outline"} className={cn(!s.online && "opacity-50")}>
+                    {s.name}
+                  </Badge>
+                </div>
               ))}
             </div>
           )}
@@ -287,4 +343,3 @@ export default function TeacherLivePage() {
     </div>
   );
 }
-

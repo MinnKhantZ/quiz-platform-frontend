@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSocketStore } from "../../stores/socketStore";
 import { useAuthStore } from "../../stores/authStore";
 import { api } from "../../lib/api";
@@ -8,7 +8,7 @@ import { Badge } from "../../components/ui/badge";
 import QuestionCard from "../../components/quiz/QuestionCard";
 import QuizResults from "../../components/quiz/QuizResults";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
-import { Radio, AlertCircle, ClipboardList, Trophy, ArrowLeft, Medal, Award } from "lucide-react";
+import { Radio, AlertCircle, ClipboardList, Trophy, ArrowLeft, Medal, Award, WifiOff } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { Question, Attempt } from "../../types";
 
@@ -27,6 +27,8 @@ export default function StudentLivePage() {
   const [myAttempt, setMyAttempt] = useState<Attempt | null>(null);
   const [loadingAttempt, setLoadingAttempt] = useState(false);
   const user = useAuthStore((s) => s.user);
+  const resumeAttemptedRef = useRef(false);
+  const connected = useSocketStore((s) => s.connected);
 
   const {
     connect,
@@ -36,17 +38,28 @@ export default function StudentLivePage() {
     currentQuestion,
     questionIndex,
     totalQuestions,
-    disconnect,
+    leaveSession,
+    tryResume,
+    resuming,
     reconnecting,
     sessionFinished,
     sessionResults,
     sessionState,
+    teacherOnline,
   } = useSocketStore();
 
+  // Connect on mount, leave on unmount
   useEffect(() => {
     connect();
-    return () => disconnect();
-  }, [connect, disconnect]);
+    return () => leaveSession();
+  }, [connect, leaveSession]);
+
+  // Attempt resume once connected
+  useEffect(() => {
+    if (!connected || resumeAttemptedRef.current) return;
+    resumeAttemptedRef.current = true;
+    void tryResume();
+  }, [connected, tryResume]);
 
   const handleJoin = async () => {
     setError("");
@@ -70,6 +83,17 @@ export default function StudentLivePage() {
     setAnswered(false);
     setLastCorrect(null);
   }, [questionIndex]);
+
+  if (resuming) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="h-8 w-8 mx-auto rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground">Resuming session…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!session) {
     return (
@@ -248,11 +272,27 @@ export default function StudentLivePage() {
 
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-5 animate-fade-in">
-        <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-        <div className="text-center">
-          <p className="font-display text-xl font-bold">Waiting for the teacher…</p>
-          <p className="text-muted-foreground text-sm mt-1">The session will start soon</p>
-        </div>
+        {teacherOnline ? (
+          <>
+            <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+            <div className="text-center">
+              <p className="font-display text-xl font-bold">Waiting for the teacher…</p>
+              <p className="text-muted-foreground text-sm mt-1">The session will start soon</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+              <WifiOff className="h-7 w-7" />
+            </div>
+            <div className="text-center">
+              <p className="font-display text-xl font-bold">Teacher is temporarily away</p>
+              <p className="text-muted-foreground text-sm mt-1">
+                The session is still active. Please wait — it will resume shortly.
+              </p>
+            </div>
+          </>
+        )}
         <Badge variant="secondary" className="text-base px-4 py-2">
           {session.quiz?.title}
         </Badge>

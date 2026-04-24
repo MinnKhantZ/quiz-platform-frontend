@@ -92,7 +92,32 @@ export interface LiveSession {
   joinCode: string;
   status: SessionStatus;
   currentQuestion: number;
+  showResults: boolean;
+  showLeaderboard: boolean;
   quiz?: Quiz;
+}
+
+export interface LiveParticipant {
+  studentId: string;
+  name: string;
+  online: boolean;
+}
+
+export interface SessionSnapshot {
+  session: LiveSession;
+  currentQuestion: Question | null;
+  questionIndex: number;
+  totalQuestions: number;
+  participants: LiveParticipant[];
+  answers: Array<{
+    studentId: string;
+    questionId: string;
+    selectedOption: number | null;
+    isCorrect: boolean;
+  }>;
+  sessionFinished: boolean;
+  sessionResults: LiveResult[];
+  teacherOnline: boolean;
 }
 
 export interface LeaderboardEntry {
