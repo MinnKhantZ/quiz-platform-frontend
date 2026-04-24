@@ -1,14 +1,32 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuizStore } from "../../stores/quizStore";
-import { Card, CardContent } from "../../components/ui/card";
+import { api } from "../../lib/api";
+import { cache } from "../../lib/cache";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
-import { Trash2, Save } from "lucide-react";
-import type { TimerType } from "../../types";
+import { Trash2, Save, PlusCircle, ImagePlus } from "lucide-react";
+import type { TimerType, QuestionType } from "../../types";
+
+interface QuestionOption {
+  text: string;
+  isCorrect: boolean;
+}
+
+interface DraftQuestion {
+  id?: string;
+  type: QuestionType;
+  text: string;
+  options: QuestionOption[];
+  correctAnswer: string;
+  points: number;
+  imageUrl: string | null;
+  saved: boolean;
+}
 
 export default function QuizEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +38,8 @@ export default function QuizEditPage() {
   const [timerType, setTimerType] = useState<TimerType>("NONE");
   const [timerSeconds, setTimerSeconds] = useState(60);
   const [saving, setSaving] = useState(false);
+  const [localQuestions, setLocalQuestions] = useState<DraftQuestion[]>([]);
+  const [questionSaving, setQuestionSaving] = useState(false);
 
   useEffect(() => {
     if (id) fetchQuiz(id);
@@ -33,8 +53,118 @@ export default function QuizEditPage() {
       setCategory(currentQuiz.category || "");
       setTimerType(currentQuiz.timerType);
       setTimerSeconds(currentQuiz.timerSeconds || 60);
+      setLocalQuestions(
+        (currentQuiz.questions || []).map((q) => ({
+          id: q.id,
+          type: q.type,
+          text: q.text,
+          options: (q.options as QuestionOption[]) || [],
+          correctAnswer: q.correctAnswer || "",
+          points: q.points,
+          imageUrl: q.imageUrl || null,
+          saved: true,
+        }))
+      );
     }
   }, [currentQuiz]);
+
+  const addQuestion = () => {
+    setLocalQuestions((prev) => [
+      ...prev,
+      {
+        type: "MCQ",
+        text: "",
+        options: [
+          { text: "", isCorrect: true },
+          { text: "", isCorrect: false },
+          { text: "", isCorrect: false },
+          { text: "", isCorrect: false },
+        ],
+        correctAnswer: "",
+        points: 1,
+        imageUrl: null,
+        saved: false,
+      },
+    ]);
+  };
+
+  const updateLocalQuestion = (index: number, field: keyof DraftQuestion, value: unknown) => {
+    setLocalQuestions((prev) =>
+      prev.map((q, i) => (i === index ? { ...q, [field]: value, saved: false } : q))
+    );
+  };
+
+  const updateLocalOption = (qIndex: number, oIndex: number, field: keyof QuestionOption, value: unknown) => {
+    setLocalQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== qIndex) return q;
+        const options = q.options.map((o, j) => {
+          if (field === "isCorrect") return { ...o, isCorrect: j === oIndex };
+          return j === oIndex ? { ...o, [field]: value } : o;
+        });
+        return { ...q, options, saved: false };
+      })
+    );
+  };
+
+  const saveQuestion = async (index: number) => {
+    if (!id) return;
+    const q = localQuestions[index];
+    setQuestionSaving(true);
+    try {
+      const data = {
+        type: q.type,
+        text: q.text,
+        points: q.points,
+        imageUrl: q.imageUrl,
+        options: q.type === "FILL_BLANK" ? null : q.options,
+        correctAnswer: q.type === "FILL_BLANK" ? q.correctAnswer : null,
+      };
+      if (q.id) {
+        await api.put(`/questions/${q.id}`, data as Record<string, unknown>);
+        setLocalQuestions((prev) =>
+          prev.map((qq, i) => (i === index ? { ...qq, saved: true } : qq))
+        );
+      } else {
+        const created = await api.post<{ id: string }>(`/${id}/questions`, data as Record<string, unknown>);
+        setLocalQuestions((prev) =>
+          prev.map((qq, i) => (i === index ? { ...qq, id: created.id, saved: true } : qq))
+        );
+      }
+      cache.invalidate(`quiz:${id}`);
+      cache.invalidatePrefix("quizzes:student:");
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setQuestionSaving(false);
+    }
+  };
+
+  const deleteQuestion = async (index: number) => {
+    const q = localQuestions[index];
+    if (q.id) {
+      try {
+        await api.delete(`/questions/${q.id}`);
+        cache.invalidate(`quiz:${id}`);
+        cache.invalidatePrefix("quizzes:student:");
+      } catch (err) {
+        alert((err as Error).message);
+        return;
+      }
+    }
+    setLocalQuestions((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleImageUpload = async (index: number, file: File) => {
+    const formData = new FormData();
+    formData.append("image", file);
+    try {
+      const { url } = await api.upload<{ url: string }>("/upload", formData);
+      updateLocalQuestion(index, "imageUrl", url);
+    } catch (err) {
+      alert((err as Error).message);
+    }
+  };
 
   const handleSave = async () => {
     if (!id) return;
@@ -146,23 +276,152 @@ export default function QuizEditPage() {
 
       <div>
         <p className="text-xs font-display font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Questions ({currentQuiz.questions?.length || 0})
+          Questions ({localQuestions.length})
         </p>
-        <div className="space-y-2">
-          {currentQuiz.questions?.map((q) => (
-            <div key={q.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <Badge variant="outline" className="shrink-0">{q.type}</Badge>
-                <span className="text-sm truncate">{q.text}</span>
-              </div>
-              <span className="ml-3 text-xs text-muted-foreground shrink-0">{q.points} pts</span>
-            </div>
+        <div className="space-y-4">
+          {localQuestions.map((q, qIndex) => (
+            <Card key={qIndex} className="relative overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <CardTitle className="text-sm font-display font-semibold uppercase tracking-wider text-muted-foreground">
+                  Question {qIndex + 1}
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <Badge variant={q.saved ? "success" : "secondary"}>{q.saved ? "Saved" : "Unsaved"}</Badge>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteQuestion(qIndex)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  {(["MCQ", "TRUE_FALSE", "FILL_BLANK"] as QuestionType[]).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        updateLocalQuestion(qIndex, "type", t);
+                        if (t === "TRUE_FALSE") {
+                          updateLocalQuestion(qIndex, "options", [
+                            { text: "True", isCorrect: true },
+                            { text: "False", isCorrect: false },
+                          ]);
+                        } else if (t === "MCQ") {
+                          updateLocalQuestion(qIndex, "options", [
+                            { text: "", isCorrect: true },
+                            { text: "", isCorrect: false },
+                            { text: "", isCorrect: false },
+                            { text: "", isCorrect: false },
+                          ]);
+                        }
+                      }}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-display font-medium transition-colors ${
+                        q.type === t
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-primary/40"
+                      }`}
+                    >
+                      {t === "MCQ" ? "MCQ" : t === "TRUE_FALSE" ? "True/False" : "Fill Blank"}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Question Text</Label>
+                  <Input
+                    value={q.text}
+                    onChange={(e) => updateLocalQuestion(qIndex, "text", e.target.value)}
+                    placeholder="Enter question…"
+                  />
+                </div>
+
+                <div>
+                  {q.imageUrl ? (
+                    <div className="relative">
+                      <img src={q.imageUrl} alt="" className="max-h-32 rounded-lg" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-1 right-1"
+                        onClick={() => updateLocalQuestion(qIndex, "imageUrl", null)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground hover:bg-accent/60 transition-colors">
+                      <ImagePlus className="h-4 w-4" />
+                      Add image (optional)
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && handleImageUpload(qIndex, e.target.files[0])}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {(q.type === "MCQ" || q.type === "TRUE_FALSE") && (
+                  <div className="space-y-2">
+                    <Label>Options — click radio to mark correct</Label>
+                    {q.options.map((opt, oIndex) => (
+                      <div key={oIndex} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name={`correct-edit-${qIndex}`}
+                          checked={opt.isCorrect}
+                          onChange={() => updateLocalOption(qIndex, oIndex, "isCorrect", true)}
+                          className="h-4 w-4 accent-[oklch(0.74_0.16_80)]"
+                        />
+                        <Input
+                          value={opt.text}
+                          onChange={(e) => updateLocalOption(qIndex, oIndex, "text", e.target.value)}
+                          placeholder={`Option ${oIndex + 1}`}
+                          disabled={q.type === "TRUE_FALSE"}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {q.type === "FILL_BLANK" && (
+                  <div className="space-y-2">
+                    <Label>Correct Answer</Label>
+                    <Input
+                      value={q.correctAnswer}
+                      onChange={(e) => updateLocalQuestion(qIndex, "correctAnswer", e.target.value)}
+                      placeholder="Type the correct answer"
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <Label>Points</Label>
+                  <Input
+                    type="number"
+                    value={q.points}
+                    onChange={(e) => updateLocalQuestion(qIndex, "points", Number(e.target.value))}
+                    min={1}
+                    className="w-20"
+                  />
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => saveQuestion(qIndex)}
+                  disabled={!q.text || questionSaving}
+                >
+                  {questionSaving ? "Saving…" : q.saved ? "Update Question" : "Save Question"}
+                </Button>
+              </CardContent>
+            </Card>
           ))}
-          {(!currentQuiz.questions || currentQuiz.questions.length === 0) && (
-            <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-              No questions yet
-            </div>
-          )}
+
+          <Button variant="outline" className="w-full border-dashed" onClick={addQuestion}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Question
+          </Button>
         </div>
       </div>
     </div>

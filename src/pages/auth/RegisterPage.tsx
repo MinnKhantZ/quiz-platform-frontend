@@ -62,7 +62,11 @@ export default function RegisterPage() {
             {error && (
               <div className="flex items-start gap-2.5 rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                {error}
+                <ul className="list-none space-y-0.5">
+                  {error.split("\n").map((msg, i) => (
+                    <li key={i}>{msg}</li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -94,10 +98,10 @@ export default function RegisterPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="Min. 6 characters"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
+                minLength={10}
                 required
                 autoComplete="new-password"
               />

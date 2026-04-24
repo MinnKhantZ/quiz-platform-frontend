@@ -10,9 +10,10 @@ import { cn } from "../../lib/utils";
 
 interface QuizResultsProps {
   attempt: Attempt;
+  showActions?: boolean;
 }
 
-export default function QuizResults({ attempt }: QuizResultsProps) {
+export default function QuizResults({ attempt, showActions = true }: QuizResultsProps) {
   const navigate = useNavigate();
   const pct = Math.round(attempt.percentage);
   const isPassing = pct >= 70;
@@ -104,14 +105,16 @@ export default function QuizResults({ attempt }: QuizResultsProps) {
       )}
 
       {/* Actions */}
-      <div className="flex gap-3">
-        <Button variant="outline" className="flex-1" onClick={() => navigate(-1)}>
-          Back
-        </Button>
-        <Button className="flex-1" onClick={() => navigate("/student/quizzes")}>
-          More Quizzes
-        </Button>
-      </div>
+      {showActions && (
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={() => navigate(-1)}>
+            Back
+          </Button>
+          <Button className="flex-1" onClick={() => navigate("/student/quizzes")}>
+            More Quizzes
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

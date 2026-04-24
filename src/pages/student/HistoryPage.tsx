@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
+import { cache } from "../../lib/cache";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { formatDate, formatTime } from "../../lib/utils";
@@ -12,24 +13,43 @@ import { cn } from "../../lib/utils";
 const PAGE_SIZE = 10;
 
 export default function HistoryPage() {
-  const [attempts, setAttempts] = useState<Attempt[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [attempts, setAttempts] = useState<Attempt[]>(
+    () => cache.get<Attempt[]>("history:p1") ?? []
+  );
+  const [loading, setLoading] = useState<boolean>(
+    () => !cache.get<Attempt[]>("history:p1")
+  );
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const navigate = useNavigate();
 
   const loadHistory = useCallback(async (targetPage: number) => {
-    setLoading(true);
+    const cacheKey = `history:p${targetPage}`;
+    const stale = cache.get<Attempt[]>(cacheKey);
+    if (stale) {
+      setAttempts(stale);
+      setHasMore(stale.length === PAGE_SIZE);
+    } else {
+      setLoading(true);
+    }
     setError(null);
+    const unsub = cache.subscribe<Attempt[]>(cacheKey, (fresh) => {
+      setAttempts(fresh);
+      setHasMore(fresh.length === PAGE_SIZE);
+      unsub();
+    });
     try {
-      const data = await api.get<Attempt[]>(`/me/attempts?page=${targetPage}&limit=${PAGE_SIZE}`);
+      const data = await cache.fetch<Attempt[]>(cacheKey, () =>
+        api.get<Attempt[]>(`/me/attempts?page=${targetPage}&limit=${PAGE_SIZE}`)
+      );
       setAttempts(data);
       setHasMore(data.length === PAGE_SIZE);
+      setLoading(false);
     } catch (err) {
       setError((err as Error).message);
-    } finally {
       setLoading(false);
+      unsub();
     }
   }, []);
 
@@ -81,6 +101,12 @@ export default function HistoryPage() {
                 </p>
               </div>
               <div className="flex items-center gap-3 ml-4 shrink-0">
+                {attempt.isLive && (
+                  <Badge variant="default" className="gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse inline-block" />
+                    Live
+                  </Badge>
+                )}
                 <Badge
                   variant={
                     attempt.percentage >= 70

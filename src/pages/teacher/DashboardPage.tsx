@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "../../stores/authStore";
 import { api } from "../../lib/api";
+import { cache } from "../../lib/cache";
 import { Card, CardContent } from "../../components/ui/card";
+import { Skeleton } from "../../components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Users, PlusCircle, ArrowRight, Zap } from "lucide-react";
 import type { Quiz } from "../../types";
@@ -34,14 +36,23 @@ const StatCard = ({
 export default function TeacherDashboard() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
-  const [stats, setStats] = useState<TeacherStats>({ quizzes: 0, published: 0, totalAttempts: 0 });
+  const [stats, setStats] = useState<TeacherStats | null>(
+    cache.get<TeacherStats>("teacher:dashboard") ?? null
+  );
 
   useEffect(() => {
-    api.get<Quiz[]>("/quizzes").then((quizzes) => {
-      const published = quizzes.filter((q) => q.isPublished).length;
-      const totalAttempts = quizzes.reduce((s, q) => s + (q._count?.attempts || 0), 0);
-      setStats({ quizzes: quizzes.length, published, totalAttempts });
-    }).catch(() => {});
+    cache
+      .fetch<TeacherStats>("teacher:dashboard", async () => {
+        const quizzes = await api.get<Quiz[]>("/quizzes");
+        const published = quizzes.filter((q) => q.isPublished).length;
+        const totalAttempts = quizzes.reduce((s, q) => s + (q._count?.attempts || 0), 0);
+        return { quizzes: quizzes.length, published, totalAttempts };
+      })
+      .then(setStats)
+      .catch(() => {});
+
+    const unsub = cache.subscribe<TeacherStats>("teacher:dashboard", setStats);
+    return unsub;
   }, []);
 
   const firstName = user?.name?.split(" ")[0] ?? "there";
@@ -62,13 +73,29 @@ export default function TeacherDashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard
-          value={stats.quizzes}
-          label="Total Quizzes"
-          sub={`${stats.published} published`}
-        />
-        <StatCard value={stats.published} label="Published" />
-        <StatCard value={stats.totalAttempts} label="Total Attempts" />
+        {stats ? (
+          <>
+            <StatCard
+              value={stats.quizzes}
+              label="Total Quizzes"
+              sub={`${stats.published} published`}
+            />
+            <StatCard value={stats.published} label="Published" />
+            <StatCard value={stats.totalAttempts} label="Total Attempts" />
+          </>
+        ) : (
+          <>
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="relative overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+                <CardContent className="p-5 space-y-2">
+                  <Skeleton className="h-9 w-16" />
+                  <Skeleton className="h-4 w-28" />
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        )}
       </div>
 
       <div>

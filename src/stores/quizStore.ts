@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { api } from "../lib/api";
+import { cache } from "../lib/cache";
 import type { Quiz, Question } from "../types";
 
 interface QuizState {
@@ -25,28 +26,51 @@ export const useQuizStore = create<QuizState>((set) => ({
   error: null,
 
   fetchQuizzes: async () => {
-    set({ loading: true, error: null });
+    const stale = cache.get<Quiz[]>("quizzes:list");
+    if (stale) {
+      set({ quizzes: stale, loading: false });
+    } else {
+      set({ loading: true, error: null });
+    }
+    const unsub = cache.subscribe<Quiz[]>("quizzes:list", (fresh) => {
+      set({ quizzes: fresh });
+      unsub();
+    });
     try {
-      const quizzes = await api.get<Quiz[]>("/quizzes");
+      const quizzes = await cache.fetch<Quiz[]>("quizzes:list", () => api.get<Quiz[]>("/quizzes"));
       set({ quizzes, loading: false });
     } catch (err) {
       set({ error: (err as Error).message, loading: false });
+      unsub();
     }
   },
 
   fetchQuiz: async (id: string) => {
-    set({ loading: true, error: null });
+    const stale = cache.get<Quiz>(`quiz:${id}`);
+    if (stale) {
+      set({ currentQuiz: stale, loading: false });
+    } else {
+      set({ loading: true, error: null });
+    }
+    const unsub = cache.subscribe<Quiz>(`quiz:${id}`, (fresh) => {
+      set({ currentQuiz: fresh });
+      unsub();
+    });
     try {
-      const quiz = await api.get<Quiz>(`/quizzes/${id}`);
+      const quiz = await cache.fetch<Quiz>(`quiz:${id}`, () => api.get<Quiz>(`/quizzes/${id}`));
       set({ currentQuiz: quiz, loading: false });
     } catch (err) {
       set({ error: (err as Error).message, loading: false });
+      unsub();
     }
   },
 
   createQuiz: async (data: Partial<Quiz>) => {
     const quiz = await api.post<Quiz>("/quizzes", data as Record<string, unknown>);
     set((state) => ({ quizzes: [quiz, ...state.quizzes] }));
+    cache.invalidate("teacher:dashboard");
+    cache.invalidate("quizzes:list");
+    cache.invalidatePrefix("quizzes:student:");
     return quiz;
   },
 
@@ -56,6 +80,10 @@ export const useQuizStore = create<QuizState>((set) => ({
       quizzes: state.quizzes.map((q) => (q.id === id ? quiz : q)),
       currentQuiz: quiz,
     }));
+    cache.invalidate("teacher:dashboard");
+    cache.invalidate("quizzes:list");
+    cache.invalidate(`quiz:${id}`);
+    cache.invalidatePrefix("quizzes:student:");
     return quiz;
   },
 
@@ -64,6 +92,12 @@ export const useQuizStore = create<QuizState>((set) => ({
     set((state) => ({
       quizzes: state.quizzes.filter((q) => q.id !== id),
     }));
+    cache.invalidate("teacher:dashboard");
+    cache.invalidate("quizzes:list");
+    cache.invalidate(`quiz:${id}`);
+    cache.invalidatePrefix("quizzes:student:");
+    cache.invalidate(`leaderboard:${id}`);
+    cache.invalidate(`analytics:${id}`);
   },
 
   addQuestion: async (quizId: string, data: Partial<Question>) => {

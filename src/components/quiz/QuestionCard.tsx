@@ -79,8 +79,8 @@ export default function QuestionCard({
                 text={opt.text}
                 index={i}
                 selected={selectedOption === i}
-                correct={showResult && (opt.isCorrect ?? false)}
-                wrong={showResult && selectedOption === i && !(opt.isCorrect ?? false)}
+                correct={showResult && ((opt.isCorrect ?? false) || (isCorrect && selectedOption === i))}
+                wrong={showResult && selectedOption === i && !(opt.isCorrect ?? false) && !isCorrect}
                 disabled={disabled || showResult}
                 onClick={setSelectedOption}
               />

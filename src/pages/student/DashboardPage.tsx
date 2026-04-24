@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "../../stores/authStore";
 import { api } from "../../lib/api";
+import { cache } from "../../lib/cache";
 import { Card, CardContent } from "../../components/ui/card";
+import { Skeleton } from "../../components/ui/skeleton";
 import { Button } from "../../components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Trophy, History, Radio, ArrowRight, Zap } from "lucide-react";
@@ -75,19 +77,30 @@ const ActionCard = ({
 export default function StudentDashboard() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats>({ quizzes: 0, attempts: 0, avgScore: 0 });
+  const [stats, setStats] = useState<DashboardStats | null>(
+    cache.get<DashboardStats>("student:dashboard") ?? null
+  );
 
   useEffect(() => {
-    Promise.all([
-      api.get<Quiz[]>("/quizzes"),
-      api.get<Attempt[]>("/me/attempts"),
-    ]).then(([quizzes, attempts]) => {
-      const completed = attempts.filter((a) => a.completedAt);
-      const avg = completed.length > 0
-        ? completed.reduce((s, a) => s + a.percentage, 0) / completed.length
-        : 0;
-      setStats({ quizzes: quizzes.length, attempts: completed.length, avgScore: Math.round(avg) });
-    }).catch(() => {});
+    const fetchStats = () =>
+      cache.fetch<DashboardStats>("student:dashboard", async () => {
+        const [quizzes, attempts] = await Promise.all([
+          api.get<Quiz[]>("/quizzes"),
+          api.get<Attempt[]>("/me/attempts"),
+        ]);
+        const completed = attempts.filter((a) => a.completedAt);
+        const avg =
+          completed.length > 0
+            ? completed.reduce((s, a) => s + a.percentage, 0) / completed.length
+            : 0;
+        return { quizzes: quizzes.length, attempts: completed.length, avgScore: Math.round(avg) };
+      });
+
+    fetchStats().then(setStats).catch(() => {});
+
+    // Stay subscribed so background revalidations push updates
+    const unsub = cache.subscribe<DashboardStats>("student:dashboard", setStats);
+    return unsub;
   }, []);
 
   const firstName = user?.name?.split(" ")[0] ?? "there";
@@ -112,19 +125,35 @@ export default function StudentDashboard() {
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard value={stats.quizzes} label="Available Quizzes" />
-        <StatCard value={stats.attempts} label="Quizzes Completed" />
-        <StatCard
-          value={`${stats.avgScore}%`}
-          label="Average Score"
-          accent={
-            stats.avgScore >= 70
-              ? "text-success"
-              : stats.avgScore >= 40
-              ? "text-primary"
-              : "text-destructive"
-          }
-        />
+        {stats ? (
+          <>
+            <StatCard value={stats.quizzes} label="Available Quizzes" />
+            <StatCard value={stats.attempts} label="Quizzes Completed" />
+            <StatCard
+              value={`${stats.avgScore}%`}
+              label="Average Score"
+              accent={
+                stats.avgScore >= 70
+                  ? "text-success"
+                  : stats.avgScore >= 40
+                  ? "text-primary"
+                  : "text-destructive"
+              }
+            />
+          </>
+        ) : (
+          <>
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="relative overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+                <CardContent className="p-5 space-y-2">
+                  <Skeleton className="h-9 w-16" />
+                  <Skeleton className="h-4 w-28" />
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        )}
       </div>
 
       {/* Quick actions */}
@@ -156,7 +185,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* Trophy card */}
-      {stats.avgScore >= 70 && stats.attempts > 0 && (
+      {stats && stats.avgScore >= 70 && stats.attempts > 0 && (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="flex items-center gap-4 p-5">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary">
@@ -165,7 +194,7 @@ export default function StudentDashboard() {
             <div>
               <p className="font-display font-semibold text-foreground">Great performance!</p>
               <p className="text-sm text-muted-foreground">
-                You're averaging {stats.avgScore}% — keep it up!
+                You&apos;re averaging {stats.avgScore}% — keep it up!
               </p>
             </div>
             <Button size="sm" className="ml-auto" onClick={() => navigate("/student/history")}>

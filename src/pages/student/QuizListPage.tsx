@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../lib/api";
+import { cache } from "../../lib/cache";
 import QuizCard from "../../components/quiz/QuizCard";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import { Button } from "../../components/ui/button";
@@ -9,23 +10,42 @@ import type { Quiz } from "../../types";
 const PAGE_SIZE = 12;
 
 export default function QuizListPage() {
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [quizzes, setQuizzes] = useState<Quiz[]>(
+    () => cache.get<Quiz[]>("quizzes:student:p1") ?? []
+  );
+  const [loading, setLoading] = useState<boolean>(
+    () => !cache.get<Quiz[]>("quizzes:student:p1")
+  );
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
   const loadPage = useCallback(async (targetPage: number) => {
-    setLoading(true);
+    const cacheKey = `quizzes:student:p${targetPage}`;
+    const stale = cache.get<Quiz[]>(cacheKey);
+    if (stale) {
+      setQuizzes(stale);
+      setHasMore(stale.length === PAGE_SIZE);
+    } else {
+      setLoading(true);
+    }
     setError(null);
+    const unsub = cache.subscribe<Quiz[]>(cacheKey, (fresh) => {
+      setQuizzes(fresh);
+      setHasMore(fresh.length === PAGE_SIZE);
+      unsub();
+    });
     try {
-      const data = await api.get<Quiz[]>(`/quizzes?page=${targetPage}&limit=${PAGE_SIZE}`);
+      const data = await cache.fetch<Quiz[]>(cacheKey, () =>
+        api.get<Quiz[]>(`/quizzes?page=${targetPage}&limit=${PAGE_SIZE}`)
+      );
       setQuizzes(data);
       setHasMore(data.length === PAGE_SIZE);
+      setLoading(false);
     } catch (err) {
       setError((err as Error).message);
-    } finally {
       setLoading(false);
+      unsub();
     }
   }, []);
 

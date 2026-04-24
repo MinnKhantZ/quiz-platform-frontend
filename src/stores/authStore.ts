@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { api } from "../lib/api";
+import { cache } from "../lib/cache";
 import type { User } from "../types";
 
 interface AuthState {
@@ -46,6 +47,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: () => {
     localStorage.removeItem("token");
+    cache.clear();
     set({ user: null, token: null });
   },
 }));

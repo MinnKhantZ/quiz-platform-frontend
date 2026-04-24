@@ -4,16 +4,20 @@ import { useQuizStore } from "../../stores/quizStore";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { Users, Play, SkipForward, StopCircle, Copy, Check, Radio } from "lucide-react";
+import { Users, Play, SkipForward, StopCircle, Copy, Check, Radio, Trophy, ClipboardList } from "lucide-react";
 import type { QuizOption } from "../../types";
+import { cn } from "../../lib/utils";
 
 export default function TeacherLivePage() {
   const { quizzes, fetchQuizzes } = useQuizStore();
   const {
-    connect, createSession, startSession, nextQuestion, endSession, disconnect,
+    connect, createSession, startSession, nextQuestion, endSession, setSessionState, disconnect,
     session, currentQuestion, questionIndex, totalQuestions, students, answers, reconnecting,
+    sessionResults,
   } = useSocketStore();
   const [copied, setCopied] = useState(false);
+  const [showResultsEnabled, setShowResultsEnabled] = useState(false);
+  const [showLeaderboardEnabled, setShowLeaderboardEnabled] = useState(false);
 
   useEffect(() => {
     fetchQuizzes();
@@ -22,7 +26,19 @@ export default function TeacherLivePage() {
   }, [fetchQuizzes, connect, disconnect]);
 
   const handleCreate = async (quizId: string) => {
+    setShowResultsEnabled(false);
+    setShowLeaderboardEnabled(false);
     await createSession(quizId);
+  };
+
+  const handleToggleResults = async (enabled: boolean) => {
+    setShowResultsEnabled(enabled);
+    await setSessionState(enabled, showLeaderboardEnabled);
+  };
+
+  const handleToggleLeaderboard = async (enabled: boolean) => {
+    setShowLeaderboardEnabled(enabled);
+    await setSessionState(showResultsEnabled, enabled);
   };
 
   const copyCode = () => {
@@ -121,12 +137,88 @@ export default function TeacherLivePage() {
         </CardContent>
       </Card>
 
-      {!currentQuestion ? (
+      {!currentQuestion && sessionResults.length === 0 ? (
         <Button size="lg" className="w-full" onClick={() => startSession()} disabled={students.length === 0}>
           <Play className="mr-2 h-5 w-5" />
           Start Quiz
           {students.length > 0 && <span className="ml-1 text-primary-foreground/70">({students.length} joined)</span>}
         </Button>
+      ) : !currentQuestion && sessionResults.length > 0 ? (
+        /* Session complete — show results + actions */
+        <div className="space-y-5">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-primary" />
+            <h2 className="font-display text-lg font-bold">Quiz Complete — Results</h2>
+          </div>
+
+          <Card>
+            <CardContent className="pt-4 pb-2">
+              <div className="space-y-2">
+                {sessionResults.map((r, i) => (
+                  <div
+                    key={r.studentId}
+                    className={cn(
+                      "flex items-center justify-between rounded-lg border px-4 py-2.5",
+                      i === 0 ? "border-primary/30 bg-primary/5" : "border-border bg-card"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-display font-bold text-sm w-5 text-muted-foreground">{i + 1}</span>
+                      <span className="font-medium text-sm">{r.studentName}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-muted-foreground">{r.score}/{r.totalPoints} pts</span>
+                      <Badge variant={r.percentage >= 70 ? "success" : r.percentage >= 40 ? "secondary" : "destructive"}>
+                        {Math.round(r.percentage)}%
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+                {sessionResults.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">No student results recorded.</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Teacher action controls */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-display font-semibold uppercase tracking-wider text-muted-foreground">
+                Student Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <label className="flex items-center justify-between cursor-pointer rounded-xl border border-border px-4 py-3 hover:bg-accent/40 transition-colors">
+                <div className="flex items-center gap-3">
+                  <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Show individual results to students</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={showResultsEnabled}
+                  onChange={(e) => handleToggleResults(e.target.checked)}
+                  className="h-4 w-4 accent-[oklch(0.74_0.16_80)]"
+                />
+              </label>
+              <label className="flex items-center justify-between cursor-pointer rounded-xl border border-border px-4 py-3 hover:bg-accent/40 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Trophy className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Show leaderboard to students</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={showLeaderboardEnabled}
+                  onChange={(e) => handleToggleLeaderboard(e.target.checked)}
+                  className="h-4 w-4 accent-[oklch(0.74_0.16_80)]"
+                />
+              </label>
+              <Button variant="destructive" className="w-full" onClick={() => endSession()}>
+                <StopCircle className="mr-2 h-4 w-4" /> Terminate Session
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <div className="space-y-4">
           <Card>

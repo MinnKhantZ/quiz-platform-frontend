@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../../lib/api";
+import { cache } from "../../lib/cache";
 import { Badge } from "../../components/ui/badge";
 import { formatTime } from "../../lib/utils";
 import { useAuthStore } from "../../stores/authStore";
@@ -12,15 +13,33 @@ import { cn } from "../../lib/utils";
 
 export default function LeaderboardPage() {
   const { quizId } = useParams<{ quizId: string }>();
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(
+    () => cache.get<LeaderboardEntry[]>(`leaderboard:${quizId}`) ?? []
+  );
+  const [loading, setLoading] = useState<boolean>(
+    () => !cache.get<LeaderboardEntry[]>(`leaderboard:${quizId}`)
+  );
   const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
-    api.get<LeaderboardEntry[]>(`/quizzes/${quizId}/leaderboard`).then((data) => {
+    if (!quizId) return;
+    const cacheKey = `leaderboard:${quizId}`;
+    const stale = cache.get<LeaderboardEntry[]>(cacheKey);
+    if (stale) {
+      setLeaderboard(stale);
+      setLoading(false);
+    }
+    const unsub = cache.subscribe<LeaderboardEntry[]>(cacheKey, (fresh) => {
+      setLeaderboard(fresh);
+      unsub();
+    });
+    cache.fetch<LeaderboardEntry[]>(cacheKey, () =>
+      api.get<LeaderboardEntry[]>(`/quizzes/${quizId}/leaderboard`)
+    ).then((data) => {
       setLeaderboard(data);
       setLoading(false);
     }).catch(() => setLoading(false));
+    return unsub;
   }, [quizId]);
 
   if (loading) return <LoadingSpinner className="mt-20" />;

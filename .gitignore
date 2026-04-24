@@ -25,4 +25,5 @@ dist-ssr
 
 # Agents
 .agents
+.github/copilot-instructions.md
 skills-lock.json

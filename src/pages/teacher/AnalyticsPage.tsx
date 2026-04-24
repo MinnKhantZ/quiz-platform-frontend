@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
+import { cache } from "../../lib/cache";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
@@ -21,11 +22,26 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (!selectedQuiz) return;
-    setLoading(true);
-    api.get<QuizAnalytics>(`/quizzes/${selectedQuiz}/analytics`).then((data) => {
+    const cacheKey = `analytics:${selectedQuiz}`;
+    const stale = cache.get<QuizAnalytics>(cacheKey);
+    if (stale) {
+      setAnalytics(stale);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+    const unsub = cache.subscribe<QuizAnalytics>(cacheKey, (fresh) => {
+      setAnalytics(fresh);
+      setLoading(false);
+      unsub();
+    });
+    cache.fetch<QuizAnalytics>(cacheKey, () =>
+      api.get<QuizAnalytics>(`/quizzes/${selectedQuiz}/analytics`)
+    ).then((data) => {
       setAnalytics(data);
       setLoading(false);
     }).catch(() => setLoading(false));
+    return unsub;
   }, [selectedQuiz]);
 
   return (

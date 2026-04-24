@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { formatTime } from "../../lib/utils";
 import { cn } from "../../lib/utils";
 import { Clock } from "lucide-react";
@@ -12,27 +12,36 @@ interface TimerProps {
 export default function Timer({ seconds, onTimeUp, running = true }: TimerProps) {
   const [timeLeft, setTimeLeft] = useState(seconds);
   const isFinished = timeLeft <= 0;
+  const onTimeUpRef = useRef(onTimeUp);
+  const firedRef = useRef(false);
+
+  // Keep ref current without re-running the interval effect
+  useEffect(() => {
+    onTimeUpRef.current = onTimeUp;
+  });
 
   useEffect(() => {
     setTimeLeft(seconds);
+    firedRef.current = false;
   }, [seconds]);
 
   useEffect(() => {
     if (!running || isFinished) return;
 
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          onTimeUp?.();
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeLeft((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [running, isFinished, onTimeUp]);
+  }, [running, isFinished]);
+
+  // Call onTimeUp exactly once when the timer reaches zero
+  useEffect(() => {
+    if (isFinished && !firedRef.current) {
+      firedRef.current = true;
+      onTimeUpRef.current?.();
+    }
+  }, [isFinished]);
 
   const percentage = (timeLeft / seconds) * 100;
   const isLow = timeLeft <= 10;

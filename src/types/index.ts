@@ -67,11 +67,22 @@ export interface Attempt {
   totalPoints: number;
   percentage: number;
   timeTaken: number;
+  isLive?: boolean;
+  liveSessionId?: string | null;
   completedAt?: string | null;
   startedAt: string;
   quiz?: { title: string; id: string };
   student?: { id: string; name: string };
   answers?: Answer[];
+}
+
+export interface LiveResult {
+  studentId: string;
+  studentName: string;
+  score: number;
+  totalPoints: number;
+  percentage: number;
+  attemptId: string;
 }
 
 export interface LiveSession {
