@@ -6,6 +6,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Users, PlusCircle, ArrowRight, Zap } from "lucide-react";
+import { toast } from "../../hooks/useToast";
 import type { Quiz } from "../../types";
 
 interface TeacherStats {
@@ -49,7 +50,9 @@ export default function TeacherDashboard() {
         return { quizzes: quizzes.length, published, totalAttempts };
       })
       .then(setStats)
-      .catch(() => {});
+      .catch(() => {
+        toast.error("Failed to load dashboard");
+      });
 
     const unsub = cache.subscribe<TeacherStats>("teacher:dashboard", setStats);
     return unsub;

@@ -8,6 +8,7 @@ import Timer from "../../components/quiz/Timer";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import { Button } from "../../components/ui/button";
 import { Progress } from "../../components/ui/progress";
+import { toast } from "../../hooks/useToast";
 import type { Quiz, Question, Attempt } from "../../types";
 
 interface AttemptData {
@@ -40,7 +41,7 @@ export default function QuizTakePage() {
       setAttemptData(data);
       setLoading(false);
     }).catch((err: Error) => {
-      alert(err.message);
+      toast.error("Failed to start quiz", err.message);
       navigate("/student/quizzes");
     });
   }, [id, navigate]);
@@ -80,7 +81,7 @@ export default function QuizTakePage() {
       } catch (err) {
         hasSubmitted.current = false;
         setSubmitting(false);
-        alert((err as Error).message);
+        toast.error("Failed to submit quiz", (err as Error).message);
       }
     } else {
       setLastCorrect(isCorrectLocal);
@@ -117,7 +118,7 @@ export default function QuizTakePage() {
       .catch((err: Error) => {
         hasSubmitted.current = false;
         setSubmitting(false);
-        alert(err.message);
+        toast.error("Failed to submit quiz", err.message);
       });
   }, [attemptData, answers, id]);
 

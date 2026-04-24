@@ -8,6 +8,7 @@ import { formatDate, formatTime } from "../../lib/utils";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import { useQuizStore } from "../../stores/quizStore";
 import { BarChart3 } from "lucide-react";
+import { toast } from "../../hooks/useToast";
 import type { QuizAnalytics } from "../../types";
 
 export default function AnalyticsPage() {
@@ -40,7 +41,10 @@ export default function AnalyticsPage() {
     ).then((data) => {
       setAnalytics(data);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => {
+      toast.error("Failed to load analytics");
+      setLoading(false);
+    });
     return unsub;
   }, [selectedQuiz]);
 

@@ -7,6 +7,7 @@ import { formatTime } from "../../lib/utils";
 import { useAuthStore } from "../../stores/authStore";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import { Trophy, Medal, Award } from "lucide-react";
+import { toast } from "../../hooks/useToast";
 import type { LeaderboardEntry } from "../../types";
 import type { ReactNode } from "react";
 import { cn } from "../../lib/utils";
@@ -38,7 +39,10 @@ export default function LeaderboardPage() {
     ).then((data) => {
       setLeaderboard(data);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => {
+      toast.error("Failed to load leaderboard");
+      setLoading(false);
+    });
     return unsub;
   }, [quizId]);
 

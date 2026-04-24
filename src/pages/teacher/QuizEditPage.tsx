@@ -9,7 +9,9 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
-import { Trash2, Save, PlusCircle, ImagePlus } from "lucide-react";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { Trash2, Save, PlusCircle, ImagePlus, Loader2 } from "lucide-react";
+import { toast } from "../../hooks/useToast";
 import type { TimerType, QuestionType } from "../../types";
 
 interface QuestionOption {
@@ -40,6 +42,8 @@ export default function QuizEditPage() {
   const [saving, setSaving] = useState(false);
   const [localQuestions, setLocalQuestions] = useState<DraftQuestion[]>([]);
   const [questionSaving, setQuestionSaving] = useState(false);
+  const [deleteQuizOpen, setDeleteQuizOpen] = useState(false);
+  const [deleteQuestionIndex, setDeleteQuestionIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (id) fetchQuiz(id);
@@ -133,8 +137,9 @@ export default function QuizEditPage() {
       }
       cache.invalidate(`quiz:${id}`);
       cache.invalidatePrefix("quizzes:student:");
+      toast.success("Question saved!");
     } catch (err) {
-      alert((err as Error).message);
+      toast.error("Failed to save question", (err as Error).message);
     } finally {
       setQuestionSaving(false);
     }
@@ -148,11 +153,12 @@ export default function QuizEditPage() {
         cache.invalidate(`quiz:${id}`);
         cache.invalidatePrefix("quizzes:student:");
       } catch (err) {
-        alert((err as Error).message);
+        toast.error("Failed to delete question", (err as Error).message);
         return;
       }
     }
     setLocalQuestions((prev) => prev.filter((_, i) => i !== index));
+    toast.success("Question deleted");
   };
 
   const handleImageUpload = async (index: number, file: File) => {
@@ -162,7 +168,7 @@ export default function QuizEditPage() {
       const { url } = await api.upload<{ url: string }>("/upload", formData);
       updateLocalQuestion(index, "imageUrl", url);
     } catch (err) {
-      alert((err as Error).message);
+      toast.error("Failed to upload image", (err as Error).message);
     }
   };
 
@@ -177,8 +183,9 @@ export default function QuizEditPage() {
         timerType,
         timerSeconds: timerType !== "NONE" ? timerSeconds : undefined,
       });
+      toast.success("Changes saved!");
     } catch (err) {
-      alert((err as Error).message);
+      toast.error("Failed to save changes", (err as Error).message);
     } finally {
       setSaving(false);
     }
@@ -186,8 +193,8 @@ export default function QuizEditPage() {
 
   const handleDelete = async () => {
     if (!id) return;
-    if (!confirm("Are you sure you want to delete this quiz?")) return;
     await deleteQuiz(id);
+    toast.success("Quiz deleted");
     navigate("/teacher/quizzes");
   };
 
@@ -196,8 +203,9 @@ export default function QuizEditPage() {
     setSaving(true);
     try {
       await updateQuiz(id, { isPublished: !currentQuiz.isPublished });
+      toast.success(currentQuiz.isPublished ? "Quiz unpublished" : "Quiz published!");
     } catch (err) {
-      alert((err as Error).message);
+      toast.error("Failed to update quiz", (err as Error).message);
     } finally {
       setSaving(false);
     }
@@ -219,7 +227,7 @@ export default function QuizEditPage() {
           <Button variant="outline" size="sm" onClick={togglePublish} disabled={saving}>
             {currentQuiz.isPublished ? "Unpublish" : "Publish"}
           </Button>
-          <Button variant="destructive" size="icon" className="h-9 w-9" onClick={handleDelete}>
+          <Button variant="destructive" size="icon" className="h-9 w-9" onClick={() => setDeleteQuizOpen(true)}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -269,7 +277,8 @@ export default function QuizEditPage() {
             )}
           </div>
           <Button onClick={handleSave} disabled={!title || saving} className="w-full" size="lg">
-            <Save className="mr-2 h-4 w-4" /> {saving ? "Saving…" : "Save Changes"}
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {saving ? "Saving…" : "Save Changes"}
           </Button>
         </CardContent>
       </Card>
@@ -288,7 +297,7 @@ export default function QuizEditPage() {
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   <Badge variant={q.saved ? "success" : "secondary"}>{q.saved ? "Saved" : "Unsaved"}</Badge>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteQuestion(qIndex)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteQuestionIndex(qIndex)}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
@@ -413,6 +422,7 @@ export default function QuizEditPage() {
                   onClick={() => saveQuestion(qIndex)}
                   disabled={!q.text || questionSaving}
                 >
+                  {questionSaving && <Loader2 className="h-4 w-4 animate-spin" />}
                   {questionSaving ? "Saving…" : q.saved ? "Update Question" : "Save Question"}
                 </Button>
               </CardContent>
@@ -424,6 +434,23 @@ export default function QuizEditPage() {
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteQuizOpen}
+        onOpenChange={setDeleteQuizOpen}
+        title="Delete Quiz"
+        description="This will permanently delete the quiz and all its questions. This action cannot be undone."
+        confirmLabel="Delete Quiz"
+        onConfirm={handleDelete}
+      />
+      <ConfirmDialog
+        open={deleteQuestionIndex !== null}
+        onOpenChange={(open) => { if (!open) setDeleteQuestionIndex(null); }}
+        title="Delete Question"
+        description="This question will be permanently removed. This action cannot be undone."
+        confirmLabel="Delete Question"
+        onConfirm={() => { if (deleteQuestionIndex !== null) deleteQuestion(deleteQuestionIndex); }}
+      />
     </div>
   );
 }

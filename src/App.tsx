@@ -7,6 +7,7 @@ import Layout from "./components/layout/Layout";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import LoadingSpinner from "./components/common/LoadingSpinner";
 import ErrorBoundary from "./components/common/ErrorBoundary";
+import { Toaster } from "./components/ui/toaster";
 
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
@@ -189,6 +190,7 @@ function App() {
       {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      <Toaster />
     </ErrorBoundary>
   );
 }

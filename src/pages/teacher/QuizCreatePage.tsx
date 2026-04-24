@@ -7,7 +7,8 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
-import { PlusCircle, Trash2, ImagePlus } from "lucide-react";
+import { PlusCircle, Trash2, ImagePlus, Loader2 } from "lucide-react";
+import { toast } from "../../hooks/useToast";
 import type { TimerType, QuestionType } from "../../types";
 
 interface QuestionOption {
@@ -54,7 +55,7 @@ export default function QuizCreatePage() {
       setQuizId(quiz.id);
       setStep(2);
     } catch (err) {
-      alert((err as Error).message);
+      toast.error("Failed to create quiz", (err as Error).message);
     } finally {
       setSaving(false);
     }
@@ -129,8 +130,9 @@ export default function QuizCreatePage() {
           prev.map((qq, i) => (i === index ? { ...qq, id: created.id, saved: true } : qq))
         );
       }
+      toast.success("Question saved!");
     } catch (err) {
-      alert((err as Error).message);
+      toast.error("Failed to save question", (err as Error).message);
     } finally {
       setSaving(false);
     }
@@ -143,7 +145,7 @@ export default function QuizCreatePage() {
       const { url } = await api.upload<{ url: string }>("/upload", formData);
       updateQuestion(index, "imageUrl", url);
     } catch (err) {
-      alert((err as Error).message);
+      toast.error("Failed to upload image", (err as Error).message);
     }
   };
 
@@ -151,9 +153,10 @@ export default function QuizCreatePage() {
     setSaving(true);
     try {
       await api.put(`/quizzes/${quizId}`, { isPublished: true });
+      toast.success("Quiz published!", "Your quiz is now live for students.");
       navigate("/teacher/quizzes");
     } catch (err) {
-      alert((err as Error).message);
+      toast.error("Failed to publish quiz", (err as Error).message);
     } finally {
       setSaving(false);
     }
@@ -214,6 +217,7 @@ export default function QuizCreatePage() {
               )}
             </div>
             <Button onClick={handleCreateQuiz} disabled={!title || saving} className="w-full" size="lg">
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? "Creating…" : "Next: Add Questions →"}
             </Button>
           </CardContent>
@@ -237,7 +241,8 @@ export default function QuizCreatePage() {
             Save as Draft
           </Button>
           <Button size="sm" onClick={publishQuiz} disabled={questions.length === 0 || saving}>
-            Publish Quiz
+            {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+            {saving ? "Publishing…" : "Publish Quiz"}
           </Button>
         </div>
       </div>
@@ -370,6 +375,7 @@ export default function QuizCreatePage() {
               onClick={() => saveQuestion(qIndex)}
               disabled={!q.text || saving}
             >
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? "Saving…" : q.saved ? "Update Question" : "Save Question"}
             </Button>
           </CardContent>

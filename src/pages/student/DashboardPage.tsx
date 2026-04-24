@@ -7,6 +7,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { Button } from "../../components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Trophy, History, Radio, ArrowRight, Zap } from "lucide-react";
+import { toast } from "../../hooks/useToast";
 import type { Quiz, Attempt } from "../../types";
 
 interface DashboardStats {
@@ -96,7 +97,9 @@ export default function StudentDashboard() {
         return { quizzes: quizzes.length, attempts: completed.length, avgScore: Math.round(avg) };
       });
 
-    fetchStats().then(setStats).catch(() => {});
+    fetchStats().then(setStats).catch(() => {
+      toast.error("Failed to load dashboard");
+    });
 
     // Stay subscribed so background revalidations push updates
     const unsub = cache.subscribe<DashboardStats>("student:dashboard", setStats);

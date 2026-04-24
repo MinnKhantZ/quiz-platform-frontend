@@ -4,7 +4,9 @@ import { useQuizStore } from "../../stores/quizStore";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { Users, Play, SkipForward, StopCircle, Copy, Check, Radio, Trophy, ClipboardList, Wifi, WifiOff, AlertCircle } from "lucide-react";
+import { toast } from "../../hooks/useToast";
 import type { QuizOption } from "../../types";
 import { cn } from "../../lib/utils";
 
@@ -19,6 +21,7 @@ export default function TeacherLivePage() {
   const [copied, setCopied] = useState(false);
   const [createError, setCreateError] = useState("");
   const [creating, setCreating] = useState(false);
+  const [endSessionOpen, setEndSessionOpen] = useState(false);
   const resumeAttemptedRef = useRef(false);
   const connected = useSocketStore((s) => s.connected);
 
@@ -138,7 +141,7 @@ export default function TeacherLivePage() {
         </div>
         <div className="flex items-center gap-2">
           {reconnecting && <Badge variant="outline">Reconnecting…</Badge>}
-          <Button variant="destructive" onClick={() => endSession()} size="sm">
+          <Button variant="destructive" onClick={() => setEndSessionOpen(true)} size="sm">
             <StopCircle className="mr-2 h-4 w-4" /> End Session
           </Button>
         </div>
@@ -256,7 +259,7 @@ export default function TeacherLivePage() {
                   className="h-4 w-4 accent-[oklch(0.74_0.16_80)]"
                 />
               </label>
-              <Button variant="destructive" className="w-full" onClick={() => endSession()}>
+              <Button variant="destructive" className="w-full" onClick={() => setEndSessionOpen(true)}>
                 <StopCircle className="mr-2 h-4 w-4" /> Terminate Session
               </Button>
             </CardContent>
@@ -340,6 +343,19 @@ export default function TeacherLivePage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={endSessionOpen}
+        onOpenChange={setEndSessionOpen}
+        title="End Live Session"
+        description="This will end the session for all connected students. You cannot restart it once ended."
+        confirmLabel="End Session"
+        onConfirm={async () => {
+          const res = await endSession();
+          if (res.success) toast.success("Session ended", "The live session has been terminated.");
+          else toast.error("Failed to end session", res.error);
+        }}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { api } from "../../lib/api";
 import { cache } from "../../lib/cache";
 import QuizResults from "../../components/quiz/QuizResults";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
+import { toast } from "../../hooks/useToast";
 import type { Attempt } from "../../types";
 
 export default function ResultsPage() {
@@ -16,7 +17,7 @@ export default function ResultsPage() {
     if (!id) return;
     cache.fetch<Attempt>(`attempt:${id}`, () => api.get<Attempt>(`/attempts/${id}`))
       .then(setAttempt)
-      .catch(console.error);
+      .catch(() => toast.error("Failed to load results"));
   }, [id]);
 
   if (!attempt) return <LoadingSpinner className="mt-20" />;
